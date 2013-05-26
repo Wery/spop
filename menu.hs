@@ -3,6 +3,8 @@ module Main where
 import System.IO
 import System.Exit
 
+import Contacts
+
 main = do
 	putStrLn "=========================="
 	putStrLn "== Menu główne programu =="
