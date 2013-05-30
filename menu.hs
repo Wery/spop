@@ -13,16 +13,6 @@ plikGrupy = "grupy.txt"
 plikTemp = ".tmp"
 
 
--- ******************************************* DODAWANIE
-			
-
-dodajRekord fname i n f t e d = do {
-	osID  <- randomRIO (1,100000 :: Int);
-	handler <- openFile fname AppendMode;
-	hPutStrLn handler (show osID++" "++i++" "++n++" "++f++" "++show t++" "++e++" "++ (take 10 d));
-	hClose handler;
-}				
-								
 --GRUPY***************************************************								
 
 dodajGrupe fname nazwa = do {
@@ -267,6 +257,13 @@ szukajUrodzin hdl todays_date = do {
 }
 
 --OSOBY *************************
+dodajRekord fname i n f t e d = do {
+	osID  <- randomRIO (1,100000 :: Int);
+	handler <- openFile fname AppendMode;
+	hPutStrLn handler (show osID++" "++i++" "++n++" "++f++" "++show t++" "++e++" "++ (take 10 d));
+	hClose handler;
+}
+
 wyswietl = do {
 	handler <- openFile plikOsoby ReadMode;
 	wczytaj handler;
