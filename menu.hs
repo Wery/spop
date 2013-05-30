@@ -37,16 +37,54 @@ dodajGrupe fname nazwa = do {
 	}
 }
 
-sprawdzCzyGrupaMaUsera fname id_grupy id_usera = do {
+usunGrupe filename_grp filename_tmp nazwa = do {
+	x <- sprawdzCzyGrupaIstnieje filename_grp nazwa;
+	if ( x ) then do {
+		handler_grp <- openFile filename_grp ReadMode;
+		handler_tmp <- openFile filename_tmp WriteMode;
+
+		usunWpisGrupy handler_grp handler_tmp nazwa;
+	
+		hClose handler_grp;
+		hClose handler_tmp;
+
+		switchTmp plikGrupy plikTemp;
+	}
+	else do {
+		putStrLn("Taka grupa nie istnieje!");
+	}
+}
+
+usunWpisGrupy handler_grp handler_tmp nazwa = do {
+	t <- hIsEOF handler_grp;                                                
+	if t then return()
+	else do {
+		contents <- hGetLine handler_grp;
+		x<-return(contents);
+
+		if x == [] then return();
+		else do {
+			if((head(tail(words x))) == nazwa) then do {
+				usunWpisGrupy handler_grp handler_tmp nazwa;                                
+			}
+			else do {
+				hPutStrLn handler_tmp x;
+				usunWpisGrupy handler_grp handler_tmp nazwa;                                
+			}
+		}
+	}
+}
+
+{-sprawdzCzyGrupaMaUsera fname id_grupy id_usera = do {
 	handler <- openFile fname ReadMode;
 	check <- (szukajUseraWGrupie handler id_grupy id_usera);
 	hClose handler;
 	return $ check;
 	
-}
+} -}
 
-szukajUseraWGrupie handler_grp id_grupy id_usera = do {
-	t <- hIsEOF hdl;                                                
+{- szukajUseraWGrupie handler_grp id_grupy id_usera = do {
+	t <- hIsEOF handler_grp;                                                
 	if t then return $ False;
 	else do {	
 		contents <- hGetLine handler_grp;
@@ -55,17 +93,17 @@ szukajUseraWGrupie handler_grp id_grupy id_usera = do {
 		if x == [] then return $ False;
 		else do {
 				if (((words x)!!0) == id_grupy) then do {
-					
-					String::usersInGroup;
-					usersInGroup = (words x)!!2;
-					putStr(usersInGroup);
+					putStrLn("nie dziala jeszcze");	
+					--String::usersInGroup;
+					--usersInGroup = (words x)!!2;
+					--putStr(usersInGroup);
 				}
 				else do {
 					 szukajUseraWGrupie handler_grp id_grupy id_usera;
 				}
 		}
 	}
-}
+} -}
 
 modyfikujWpisyGrup handler_grp handler_tmp nazwa_stara nazwa_nowa = do {
 	t <- hIsEOF handler_grp;                                                
@@ -345,19 +383,22 @@ manageGroups = do
 			manageGroups
 		"3" -> do
 			putStrLn "Grupy obecne w systemie:"
-			wyswietlGrupy	
+			wyswietlGrupy;
 			putStrLn "Podaj nazwę grupy do zmiany: ";
-			grpNameOld <- getLine
+			grpNameOld <- getLine;
 			putStrLn "Podaj nową nazwę dla grupy: ";
-			grpNameNew <- getLine
-			zmienNazweGrupy plikGrupy plikTemp grpNameOld grpNameNew
+			grpNameNew <- getLine;
+			zmienNazweGrupy plikGrupy plikTemp grpNameOld grpNameNew;
 			putStrLn "Gotowe.";
 			manageGroups	
 		"4" -> do
-			putStrLn "Podaj nazwę grupy: ";
-			grpName <- getLine
-			
+			putStrLn "Podaj nazwę grupy do usunięcia: ";
+			grpName <- getLine;
+			usunGrupe plikGrupy plikTemp grpName;
+			putStrLn "Gotowe.";
 			manageGroups
+		"6" -> do
+			putStrLn "Podaj nazwę grupy: ";
 		"8" -> main
 		_   -> do
 		       putStrLn "Nieprawidłowa opcja!"
