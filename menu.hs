@@ -66,15 +66,15 @@ usunWpisGrupy handler_grp handler_tmp nazwa = do {
 	}
 }
 
-{-sprawdzCzyGrupaMaUsera fname id_grupy id_usera = do {
+sprawdzCzyGrupaMaUsera fname id_grupy id_usera = do {
 	handler <- openFile fname ReadMode;
 	check <- (szukajUseraWGrupie handler id_grupy id_usera);
 	hClose handler;
 	return $ check;
 	
-} -}
+}
 
-{- szukajUseraWGrupie handler_grp id_grupy id_usera = do {
+szukajUseraWGrupie handler_grp id_grupy id_usera = do {
 	t <- hIsEOF handler_grp;                                                
 	if t then return $ False;
 	else do {	
@@ -84,18 +84,19 @@ usunWpisGrupy handler_grp handler_tmp nazwa = do {
 		if x == [] then return $ False;
 		else do {
 				if (((words x)!!0) == id_grupy) then do {
-					stestuj cos podobnego do: fmap show getCurrentTime
-					putStrLn("nie dziala jeszcze");	
-					--String::usersInGroup;
-					--usersInGroup = (words x)!!2;
-					--putStr(usersInGroup);
+					if(elem id_usera (splitOn "," ((words x)!!2))) then do {
+						return $ True;
+					}
+					else do {
+						szukajUseraWGrupie handler_grp id_grupy id_usera;
+					}
 				}
 				else do {
 					 szukajUseraWGrupie handler_grp id_grupy id_usera;
 				}
 		}
 	}
-} -}
+}
 
 modyfikujWpisyGrup handler_grp handler_tmp nazwa_stara nazwa_nowa = do {
 	t <- hIsEOF handler_grp;                                                
