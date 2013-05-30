@@ -5,6 +5,7 @@ import System.Random
 import System.IO
 import System.Directory
 import System.Exit
+import System.Locale
 import Data.List.Split
 import Text.Regex.Posix
 plikOsoby = "osoby.txt"
@@ -93,6 +94,7 @@ usunWpisGrupy handler_grp handler_tmp nazwa = do {
 		if x == [] then return $ False;
 		else do {
 				if (((words x)!!0) == id_grupy) then do {
+					stestuj cos podobnego do: fmap show getCurrentTime
 					putStrLn("nie dziala jeszcze");	
 					--String::usersInGroup;
 					--usersInGroup = (words x)!!2;
@@ -224,6 +226,46 @@ wczytajGrupy hdl = do {
 -- ***********************************************************
 
 
+--URODZINY ***************************************************
+
+getCurrMonthAndDate :: IO String
+getCurrMonthAndDate = do
+   now <- getCurrentTime
+   return (formatTime defaultTimeLocale "%m-%d" now)
+
+urodziny fname = do {
+	handler <- openFile fname ReadMode;
+	todays_date <- getCurrMonthAndDate;
+	check <- (szukajUrodzin handler todays_date);
+	hClose handler;
+}
+
+szukajUrodzin hdl todays_date = do {
+	t <- hIsEOF hdl;                                                
+	if t then return()
+	else do {
+		contents <- hGetLine hdl;
+		x<-return(contents);
+
+		if x == [] then return();
+		else do {
+			if((drop 5 ((words x)!!6)) == todays_date) then do {
+				putStr "ID "; putStrLn (head(words x));
+				putStr "imie: "; putStrLn( head( tail(words x)));
+				putStr "nazwisko: "; putStrLn( head $tail $ tail (words x));
+				putStr "firma: "; putStrLn( head $ tail $ tail $ tail (words x));
+				putStr "telefon: "; putStrLn( head $ tail $ tail $ tail $ tail (words x)); 
+				putStr "email: "; putStrLn( head $ tail $ tail $ tail $ tail $ tail (words x));
+				putStr "data urodzenia: "; putStrLn( head $ tail $ tail $ tail $ tail $ tail $ tail  (words x));
+				putStrLn(" ");
+			
+				szukajUrodzin hdl todays_date
+			}	
+			else szukajUrodzin hdl todays_date
+		}
+	}						
+}
+
 --OSOBY *************************
 wyswietl = do {
 	handler <- openFile plikOsoby ReadMode;
@@ -297,8 +339,8 @@ szukajWierszOId hdl par val = do {
 	}						
 }
 
-currentTime = fmap show getCurrentTime
-zonedTime = fmap show getZonedTime
+--currentTime = fmap show getCurrentTime
+--zonedTime = fmap show getZonedTime
 
 pat1 = "^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]"	
 pat2 = "^[A-Z][a-z]*$"	
@@ -417,6 +459,7 @@ searchContacts = do
 
 birthday = do
 	putStrLn "== Osoby obchodzące dzisiaj urodziny =="
+	urodziny plikOsoby
 	putStrLn "6. Powrót do menu głównego"
 	cmd <- getLine
 	case cmd of
