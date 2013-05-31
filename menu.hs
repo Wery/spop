@@ -7,6 +7,7 @@ import System.Directory
 import System.Exit
 import System.Locale
 import Data.List.Split
+import Data.List
 import Text.Regex.Posix
 plikOsoby = "osoby.txt"
 plikGrupy = "grupy.txt"
@@ -16,8 +17,8 @@ plikTemp = ".tmp"
 --GRUPY***************************************************								
 
 dodajGrupe fname nazwa = do {
-	x <- sprawdzCzyGrupaIstnieje fname nazwa;
-	if ( x ) then do {
+	x <- sprawdzCzyGrupaIstnieje fname nazwa "nazwa";
+	if ( x == True ) then do {
 		putStrLn("Taka grupa już istnieje!");
 	}
 	else do {
@@ -29,7 +30,7 @@ dodajGrupe fname nazwa = do {
 }
 
 usunGrupe filename_grp filename_tmp nazwa = do {
-	x <- sprawdzCzyGrupaIstnieje filename_grp nazwa;
+	x <- sprawdzCzyGrupaIstnieje filename_grp nazwa "nazwa";
 	if ( x ) then do {
 		handler_grp <- openFile filename_grp ReadMode;
 		handler_tmp <- openFile filename_tmp WriteMode;
@@ -98,7 +99,7 @@ szukajUseraWGrupie handler_grp id_grupy id_usera = do {
 	}
 }
 
-modyfikujWpisyGrup handler_grp handler_tmp nazwa_stara nazwa_nowa = do {
+modyfikujWpisyGrup handler_grp handler_tmp id_grupy nazwa_nowa = do {
 	t <- hIsEOF handler_grp;                                                
 	if t then return()
 	else do {
@@ -107,31 +108,31 @@ modyfikujWpisyGrup handler_grp handler_tmp nazwa_stara nazwa_nowa = do {
 
 		if x == [] then return();
 		else do {
-			if((head(tail(words x))) == nazwa_stara) then do {
+			if((head(words x)) == id_grupy) then do {
 				if ( (length (words x)) == 2 ) then do {
 					-- Nie ma żadnych kontaktów przypisanych do grupy
 					hPutStrLn handler_tmp (head(words x)++" "++nazwa_nowa);
-					modyfikujWpisyGrup handler_grp handler_tmp nazwa_stara nazwa_nowa;                                
+					modyfikujWpisyGrup handler_grp handler_tmp id_grupy nazwa_nowa;                                
 				}
 				else do {
 					-- Są kontakty przypisane do grupy
 					hPutStrLn handler_tmp (head(words x)++" "++nazwa_nowa++" "++head(tail $ tail(words x)));
-					modyfikujWpisyGrup handler_grp handler_tmp nazwa_stara nazwa_nowa;                                
+					modyfikujWpisyGrup handler_grp handler_tmp id_grupy nazwa_nowa; 
 				}
 			}
 			else do {
 				hPutStrLn handler_tmp x;
-				modyfikujWpisyGrup handler_grp handler_tmp nazwa_stara nazwa_nowa;                                
+				modyfikujWpisyGrup handler_grp handler_tmp id_grupy nazwa_nowa;                                
 			}
 		}
 	}
 }
 
-zmienNazweGrupy filename_grp filename_tmp nazwa_stara nazwa_nowa = do {
+zmienNazweGrupy filename_grp filename_tmp id_grupy nazwa_nowa = do {
 	handler_grp <- openFile filename_grp ReadMode;
 	handler_tmp <- openFile filename_tmp WriteMode;
 
-	modyfikujWpisyGrup handler_grp handler_tmp nazwa_stara nazwa_nowa;
+	modyfikujWpisyGrup handler_grp handler_tmp id_grupy nazwa_nowa;
 	
 	hClose handler_grp;
 	hClose handler_tmp;
@@ -146,10 +147,23 @@ switchTmp filename filename_tmp = do {
 	hClose handler;
 }
 
-usunOsobeZGrupy fname nazwa = do {
-	x <- sprawdzCzyGrupaIstnieje fname nazwa;
+usunOsobeZGrupy fname id_grupy id_usera = do {
+	x <- sprawdzCzyGrupaIstnieje fname id_grupy "id";
 	if ( x ) then do {
-		putStrLn("Halo!");
+		y <- sprawdzCzyGrupaMaUsera fname id_grupy id_usera;
+		if ( y ) then do {
+			handler_grp <- openFile fname ReadMode;
+			handler_tmp <- openFile plikTemp WriteMode;
+			--putStrLn("Grupa istnieje i ma usera")
+
+			usuwanieOsoby handler_grp handler_tmp id_grupy id_usera;
+
+			hClose handler_grp;
+			hClose handler_tmp;
+			
+			switchTmp plikGrupy plikTemp;
+		}
+		else putStrLn("Grupa istnieje ale nie ma tego użytkownika!")
 	}
 	else do {
 		putStrLn("Taka grupa nie istnieje!");
@@ -157,13 +171,47 @@ usunOsobeZGrupy fname nazwa = do {
 
 }
 
-sprawdzCzyGrupaIstnieje fname val = do {
-	handler <- openFile fname ReadMode;
-	check <- (szukajGrupy handler "nazwa" val);
-	hClose handler;
-	return $ check;
+
+usuwanieOsoby handler_grp handler_tmp id_grupy id_usera = do {
+	t <- hIsEOF handler_grp;                                                
+	if t then return()
+	else do {
+		contents <- hGetLine handler_grp;
+		x<-return(contents);
+
+		if x == [] then return();
+		else do {
+			if((head(words x)) == id_grupy) then do {
+				if (length (splitOn "," ((words x)!!2)) > 1) then do {
+					hPutStrLn handler_tmp (head(words x)++" "++((words x)!!1)++" "++intercalate "," (filter (\x -> x /= id_usera) (splitOn "," ((words x)!!2))));
+					usuwanieOsoby handler_grp handler_tmp id_grupy id_usera;
+				}
+				else do {
+					hPutStrLn handler_tmp (head(words x)++" "++((words x)!!1));
+					usuwanieOsoby handler_grp handler_tmp id_grupy id_usera;
+				}
+			}
+			else do {
+				hPutStrLn handler_tmp x;
+				usuwanieOsoby handler_grp handler_tmp id_grupy id_usera;                                
+			}
+		}
+	}
 }
 
+sprawdzCzyGrupaIstnieje fname val par = do
+	handler <- openFile fname ReadMode
+	if (par == "nazwa") then do {
+		check <- (szukajGrupy handler "nazwa" val);
+		hClose handler;
+		return $ check;
+	}
+	else do {
+		check <- (szukajGrupy handler "id" val);
+		hClose handler;
+		return $ check;
+	}
+	
 szukajGrupy hdl par val = do {
 	t <- hIsEOF hdl;                                                
 	if t then return $ False;
@@ -181,6 +229,16 @@ szukajGrupy hdl par val = do {
 					else do {
 						 szukajGrupy hdl par val;
 					}
+				}
+				"id" -> do {
+					--putStrLn(((words x)!!0));
+	 				if (((words x)!!0) == val) then do {
+						return $ True
+					}
+					else do {
+						 szukajGrupy hdl par val;
+					}
+
 				}
 		}
 	}
@@ -424,21 +482,29 @@ manageGroups = do
 		"3" -> do
 			putStrLn "Grupy obecne w systemie:"
 			wyswietlGrupy;
-			putStrLn "Podaj nazwę grupy do zmiany: ";
-			grpNameOld <- getLine;
+			putStrLn "Podaj ID grupy do zmiany: ";
+			grpID <- getLine;
 			putStrLn "Podaj nową nazwę dla grupy: ";
 			grpNameNew <- getLine;
-			zmienNazweGrupy plikGrupy plikTemp grpNameOld grpNameNew;
+			zmienNazweGrupy plikGrupy plikTemp grpID grpNameNew;
 			putStrLn "Gotowe.";
 			manageGroups	
 		"4" -> do
-			putStrLn "Podaj nazwę grupy do usunięcia: ";
+			putStrLn "Podaj ID grupy do usunięcia: ";
 			grpName <- getLine;
 			usunGrupe plikGrupy plikTemp grpName;
 			putStrLn "Gotowe.";
 			manageGroups
 		"6" -> do
-			putStrLn "Podaj nazwę grupy: ";
+			putStrLn "Podaj ID grupy: ";
+			grpID <- getLine;
+			putStrLn "Użytkownicy w tej grupie: ";
+
+			putStrLn "Podaj ID użytkownika do usunięcia: ";
+			userID <- getLine;
+			usunOsobeZGrupy plikGrupy grpID userID	
+			putStrLn "Gotowe.";
+			manageGroups
 		"8" -> main
 		_   -> do
 		       putStrLn "Nieprawidłowa opcja!"

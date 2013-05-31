@@ -1,4 +1,5 @@
-9450 SonGoKu
-42934 HaloHalo 32355,47693
-19417 Alohamoro                                                                                                                                                                                            
-68495 Kakrarrotoo     
+42934 Halo2 32355,47693
+19417 Alohamoro 32354,32355
+68495 Kakrarrotoo 47693
+21007 EloElo 32355,32354
+99099 Kargul 47693,32355
