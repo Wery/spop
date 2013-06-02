@@ -114,28 +114,32 @@ modyfikujWpisyGrup handler_grp handler_tmp id_grupy nazwa_nowa = do {
 }
 
 --DODAWANIE OSOBY DO GRUPY
-
 dodajOsobeDoGrupy fname id_grupy id_usera = do {
-	x <- sprawdzCzyGrupaIstnieje fname id_grupy "id";
-	if ( x ) then do {
-		y <- sprawdzCzyGrupaMaUsera fname id_grupy id_usera;
-		if ( y ) then do {
-			putStrLn("Ten użytkownik już istnieje!")
+	czyJestSens <- sprawdzCzyUserIDIstnieje plikOsoby id_usera;
+	if ( czyJestSens ) then do {
+		x <- sprawdzCzyGrupaIstnieje fname id_grupy "id";
+		if ( x ) then do {
+			y <- sprawdzCzyGrupaMaUsera fname id_grupy id_usera;
+			if ( y ) then do {
+				putStrLn("Ten użytkownik już istnieje!")
+			}
+			else do {
+				handler_grp <- openFile fname ReadMode;
+				handler_tmp <- openFile plikTemp WriteMode;
+
+				dodawanieOsoby handler_grp handler_tmp id_grupy id_usera;
+
+				hClose handler_grp;
+				hClose handler_tmp;
+
+				switchTmp plikGrupy plikTemp;
+			}
 		}
 		else do {
-			handler_grp <- openFile fname ReadMode;
-			handler_tmp <- openFile plikTemp WriteMode;
-
-			dodawanieOsoby handler_grp handler_tmp id_grupy id_usera;
-
-			hClose handler_grp;
-			hClose handler_tmp;
-			
-			switchTmp plikGrupy plikTemp;
+			putStrLn("Taka grupa nie istnieje!");
 		}
-	}
-	else do {
-		putStrLn("Taka grupa nie istnieje!");
+	}else do {
+			putStrLn("Ten użytkownik nie istnieje!");
 	}
 }
 
@@ -164,6 +168,26 @@ dodawanieOsoby handler_grp handler_tmp id_grupy id_usera = do {
 			}
 		}
 	}
+}
+
+-- MERGOWANIE GRUPY
+polaczDwieGrupy fname id_grupy1 id_grupy2 name = do {
+	new_grID  <- randomRIO (1,100000 :: Int);
+
+
+	outGrp1 <- userzyWGrupie fname id_grupy1;
+	outGrp2 <- userzyWGrupie fname id_grupy2;
+
+	handler <- openFile fname AppendMode;
+
+	--outGrp <- show nub ((show outGrp1)++(show outGrp2));
+	--putStrLn (splitOn "," ((show outGrp1)++","++(show outGrp2)));
+	hPutStrLn handler (show new_grID++" "++name++" "++((show outGrp1)++","++(show outGrp2)));
+
+	hClose handler;
+
+	--hPutStrLn handler (show new_grID++" "++name++" "++(nub ()));
+
 }
 
 -- USUWANIE OSOBY Z GRUPY
@@ -305,7 +329,6 @@ sprawdzCzyGrupaMaUsera fname id_grupy id_usera = do {
 	check <- (szukajUseraWGrupie handler id_grupy id_usera);
 	hClose handler;
 	return $ check;
-	
 }
 
 szukajUseraWGrupie handler_grp id_grupy id_usera = do {
@@ -332,8 +355,32 @@ szukajUseraWGrupie handler_grp id_grupy id_usera = do {
 	}
 }
 
+userzyWGrupie fname id_grupy = do {
+	handler <- openFile fname ReadMode;
+	check <- (pobierzUserowZGrupy handler id_grupy);
+	hClose handler;
+	return $ check;
+}
 
-						
+pobierzUserowZGrupy handler_grp id_grupy = do {
+	t <- hIsEOF handler_grp;                                                
+	if t then return "";
+	else do {	
+		contents <- hGetLine handler_grp;
+		x<-return(contents);
+
+		if x == [] then return "";
+		else do {
+			if ((head(words x)) == id_grupy) then do {
+				return $ ((words x)!!2);
+			}
+			else do {
+				pobierzUserowZGrupy handler_grp id_grupy;
+			}
+		}
+	}
+}
+
 -- ***********************************************************
 
 
@@ -413,13 +460,43 @@ wczytaj hdl = do {
 		}
 	}
 }						
+
+sprawdzCzyUserIDIstnieje fname val = do {
+	handler <- openFile fname ReadMode;
+	check <- (szukajIDUsera handler val);
+	hClose handler;
+	return $ check;
+}
+
+szukajIDUsera hdl val = do {
+	t <- hIsEOF hdl;                                                
+	if t then return $ False;
+	else do {
+		contents <- hGetLine hdl;
+		x<-return(contents);
+
+		if x == [] then do {
+			 return $ False;
+		}
+		else do {
+			if (((words x)!!0) == val) then do {
+				return $ True;
+			}
+			else do { 
+				szukajIDUsera hdl val;
+			}
+		}
+	}
+
+}
+
 -- ***********************************************************
 
 sprawdzCzyIDIstnieje fname par val = do {
 	handler <- openFile fname ReadMode;
 	check <- (szukajWierszOId handler par val);
 	hClose handler;
-	-- return $ check;
+	return $ check;
 }										
 
 szukajWierszOId hdl par val = do {
@@ -553,19 +630,33 @@ manageGroups = do
 			manageGroups	
 		"4" -> do
 			putStrLn "Podaj ID grupy do usunięcia: ";
-			grpName <- getLine;
-			usunGrupe plikGrupy plikTemp grpName;
+			grpID <- getLine;
+			usunGrupe plikGrupy plikTemp grpID;
+			putStrLn "Gotowe.";
+			manageGroups
+		"5" -> do
+			putStrLn "Podaj ID grupy do której chcesz dodać użytkownika: ";
+			grpID <- getLine;
+			putStrLn "Podaj ID użytkownika którego chcesz dodać do tej grupy: ";
+			userID <- getLine;
+			dodajOsobeDoGrupy plikGrupy grpID userID;
 			putStrLn "Gotowe.";
 			manageGroups
 		"6" -> do
 			putStrLn "Podaj ID grupy: ";
 			grpID <- getLine;
-			putStrLn "Użytkownicy w tej grupie: ";
-
 			putStrLn "Podaj ID użytkownika do usunięcia: ";
 			userID <- getLine;
-			usunOsobeZGrupy plikGrupy grpID userID	
+			usunOsobeZGrupy plikGrupy grpID userID;
 			putStrLn "Gotowe.";
+			manageGroups
+		"7" -> do
+			putStrLn "Podaj ID pierwszej grupy do scalenia: ";
+			grpID1 <- getLine;
+			putStrLn "Podaj ID drugiej grupy do scalenia: ";
+			grpID2 <- getLine;
+			putStrLn "Podaj nazwę dla nowej grupy: ";
+			new_name <- getLine;
 			manageGroups
 		"8" -> main
 		_   -> do
